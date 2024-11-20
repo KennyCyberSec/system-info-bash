@@ -1,0 +1,106 @@
+#System info script
+This will generate information on a system 
+import platform
+import psutil
+import os
+import cpuinfo
+import socket
+import sys
+from datetime import datetime
+
+def get_system_info():
+    # System Info
+    uname_info = platform.uname()
+    system_info = {
+        "System": uname_info.system,
+        "Node Name": uname_info.node,
+        "Release": uname_info.release,
+        "Version": uname_info.version,
+        "Machine": uname_info.machine,
+        "Processor": uname_info.processor
+    }
+
+    # CPU Info
+    cpu_info = cpuinfo.get_cpu_info()
+    cpu_details = {
+        "CPU": cpu_info.get('cpu', 'N/A'),
+        "CPU Cores": psutil.cpu_count(logical=False),
+        "Logical CPUs": psutil.cpu_count(logical=True),
+        "Max Frequency (MHz)": psutil.cpu_freq().max,
+        "Current Frequency (MHz)": psutil.cpu_freq().current
+    }
+
+    # Memory Info
+    virtual_memory = psutil.virtual_memory()
+    swap_memory = psutil.swap_memory()
+    memory_info = {
+        "Total RAM": virtual_memory.total / (1024 ** 3),  # GB
+        "Available RAM": virtual_memory.available / (1024 ** 3),  # GB
+        "Used RAM": virtual_memory.used / (1024 ** 3),  # GB
+        "Memory Percent": virtual_memory.percent,
+        "Total Swap": swap_memory.total / (1024 ** 3),  # GB
+        "Used Swap": swap_memory.used / (1024 ** 3),  # GB
+        "Swap Percent": swap_memory.percent
+    }
+
+    # Disk Info
+    partitions = psutil.disk_partitions()
+    disk_info = []
+    for partition in partitions:
+        partition_info = psutil.disk_usage(partition.mountpoint)
+        disk_info.append({
+            "Device": partition.device,
+            "Mountpoint": partition.mountpoint,
+            "Total Disk Space": partition_info.total / (1024 ** 3),  # GB
+            "Used Disk Space": partition_info.used / (1024 ** 3),  # GB
+            "Free Disk Space": partition_info.free / (1024 ** 3),  # GB
+            "Disk Percent": partition_info.percent
+        })
+
+    # Network Info
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    network_info = {
+        "Hostname": hostname,
+        "IP Address": ip_address,
+        "MAC Address": ':'.join(['{:02x}'.format((psutil.net_if_addrs()['eth0'][i].address)) for i in range(6)]),
+        "Network Interfaces": psutil.net_if_addrs()
+    }
+
+    # Boot Time
+    boot_time_timestamp = psutil.boot_time()
+    boot_time = datetime.fromtimestamp(boot_time_timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+    # OS Information
+    os_info = {
+        "OS": platform.system(),
+        "OS Version": platform.version(),
+        "OS Architecture": platform.architecture(),
+        "Boot Time": boot_time
+    }
+
+    # Return all gathered information
+    system_info.update(cpu_details)
+    system_info.update(memory_info)
+    system_info["Disk Info"] = disk_info
+    system_info.update(network_info)
+    system_info.update(os_info)
+
+    return system_info
+
+
+def print_system_info(info):
+    print("System Information:")
+    for key, value in info.items():
+        if isinstance(value, list):
+            print(f"\n{key}:")
+            for item in value:
+                for sub_key, sub_value in item.items():
+                    print(f"  {sub_key}: {sub_value}")
+        else:
+            print(f"{key}: {value}")
+
+
+if __name__ == "__main__":
+    info = get_system_info()
+    print_system_info(info)
